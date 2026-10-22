@@ -458,6 +458,8 @@ private struct MacEditorScreen: View {
                         .foregroundStyle(Ink.moss)
                     }
                     .padding(.bottom, 8)
+                    MetaDescriptionEditor(text: $session.metaDescription, title: session.title, html: { session.html() })
+                        .disabled(loading || (!loaded && !session.recovered))
                     ZStack(alignment: .topLeading) {
                         MacText(session: session, revision: session.revision, appearanceRevision: AppAppearance.shared.revision)
                             .disabled(loading || (!loaded && !session.recovered))
@@ -679,9 +681,11 @@ private struct MacEditorScreen: View {
                 title: session.title.trimmingCharacters(in: .whitespacesAndNewlines),
                 date: session.date,
                 body: session.html(),
-                draft: draft
+                draft: draft,
+                metaDescription: session.metaDescription
             )
             session.title = post.title
+            session.metaDescription = post.metaDescription ?? ""
             session.draft = post.draft
             session.date = post.date
             session.markClean()

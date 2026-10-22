@@ -15,6 +15,12 @@ Open **Page Editor** from the blog toolbar to edit existing pages such as About 
 
 The server is maintained separately in the sibling `../server` directory. These apps require its HTML API.
 
+## Meta descriptions
+
+Expand **Meta description** in either post editor to enter a summary or choose **Suggest with Apple Intelligence**. Review the suggestion and choose **Use description**, then save or publish normally. Only the description is generated; the title and post remain yours. Suggestions use Apple's on-device model without a cloud fallback. They require iOS/macOS 26 or newer, compatible hardware, and Apple Intelligence enabled and ready. Manual entry works on older systems. Long posts beyond the local input limit need a manual description.
+
+Descriptions are saved with the post and rendered as `<meta name="description">`. Mac recovery includes unsaved descriptions. Update the server before using these app versions: post saves use a metadata-aware media type so older servers reject them instead of silently dropping descriptions. Building requires Xcode 26 or newer; the deployment targets remain iOS 18 and macOS 15.
+
 ## Build
 
 From this directory:

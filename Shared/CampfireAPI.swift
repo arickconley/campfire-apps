@@ -6,6 +6,7 @@ struct Post: Identifiable, Decodable, Hashable {
     var date: String
     var draft: Bool
     var url: String
+    var metaDescription: String? = nil
     var body: String?
     enum BodyFormat: String, Decodable { case html }
     var format: BodyFormat = .html
@@ -56,20 +57,20 @@ struct CampfireAPI {
         try await send(path: "/api/posts/\(slugPath(slug))", method: "GET", body: nil)
     }
 
-    func create(title: String, body: String, draft: Bool) async throws -> Post {
+    func create(title: String, body: String, draft: Bool, metaDescription: String? = nil) async throws -> Post {
         try await send(
             path: "/api/posts",
             method: "POST",
-            body: WritePayload(title: title, date: nil, draft: draft, body: body),
+            body: WritePayload(title: title, date: nil, draft: draft, body: body, metaDescription: metaDescription),
             accept: [200, 201]
         )
     }
 
-    func update(slug: String, title: String, date: String, body: String, draft: Bool) async throws -> Post {
+    func update(slug: String, title: String, date: String, body: String, draft: Bool, metaDescription: String? = nil) async throws -> Post {
         try await send(
             path: "/api/posts/\(slugPath(slug))",
             method: "PUT",
-            body: WritePayload(title: title, date: date, draft: draft, body: body)
+            body: WritePayload(title: title, date: date, draft: draft, body: body, metaDescription: metaDescription)
         )
     }
 
@@ -103,6 +104,7 @@ struct CampfireAPI {
         var date: String?
         var draft: Bool
         var body: String
+        var metaDescription: String?
 
         func encode(to encoder: Encoder) throws {
             var c = encoder.container(keyedBy: CodingKeys.self)
@@ -111,10 +113,11 @@ struct CampfireAPI {
             try c.encodeIfPresent(date, forKey: .date)
             try c.encode(draft, forKey: .draft)
             try c.encode(body, forKey: .body)
+            try c.encodeIfPresent(metaDescription, forKey: .metaDescription)
         }
 
         enum CodingKeys: String, CodingKey {
-            case title, date, draft, body, format
+            case title, date, draft, body, format, metaDescription
         }
     }
 
@@ -142,7 +145,8 @@ struct CampfireAPI {
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         if let body {
             // Older servers reject this media type before they can store HTML as Markdown.
-            req.setValue("application/vnd.campfire.html+json", forHTTPHeaderField: "Content-Type")
+            let hasDescription = (body as? WritePayload)?.metaDescription != nil
+            req.setValue(hasDescription ? "application/vnd.campfire.description+json" : "application/vnd.campfire.html+json", forHTTPHeaderField: "Content-Type")
             req.httpBody = try JSONEncoder().encode(body)
         }
         let data: Data
@@ -165,6 +169,9 @@ struct CampfireAPI {
     }
 
     private func throwAPI(_ response: HTTPURLResponse, _ data: Data) throws -> Never {
+        if response.statusCode == 415 {
+            throw CampfireError(message: "Update the Campfire server to save meta descriptions. Your edits are still in the editor.")
+        }
         if let api = try? JSONDecoder().decode(APIError.self, from: data), !api.error.isEmpty {
             throw CampfireError(message: api.error)
         }

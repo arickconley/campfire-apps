@@ -79,12 +79,12 @@ final class PostsStore {
         try await api.read(slug: slug)
     }
 
-    func save(slug: String?, title: String, date: String, body: String, draft: Bool) async throws -> Post {
+    func save(slug: String?, title: String, date: String, body: String, draft: Bool, metaDescription: String? = nil) async throws -> Post {
         let post: Post
         if let slug {
-            post = try await api.update(slug: slug, title: title, date: date, body: body, draft: draft)
+            post = try await api.update(slug: slug, title: title, date: date, body: body, draft: draft, metaDescription: metaDescription)
         } else {
-            post = try await api.create(title: title, body: body, draft: draft)
+            post = try await api.create(title: title, body: body, draft: draft, metaDescription: metaDescription)
         }
         error = nil
         await reload()

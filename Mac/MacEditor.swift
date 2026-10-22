@@ -15,6 +15,7 @@ struct MacInsert: Identifiable {
 @Observable
 final class MacEditorSession {
     var title = "" { didSet { persistRecovery() } }
+    var metaDescription = "" { didSet { persistRecovery() } }
     var draft = true { didSet { persistRecovery() } }
     var date = ""
     private(set) var isEmpty = true
@@ -40,6 +41,7 @@ final class MacEditorSession {
     private var pushed = false
     private var baselined = false
     private var baseTitle = ""
+    private var baseMetaDescription = ""
     private var baseDraft = true
     private var baseDate = ""
     private var baseBody = ""
@@ -62,7 +64,7 @@ final class MacEditorSession {
     var isDirty: Bool {
         _ = contentRevision
         guard baselined else { return false }
-        return title != baseTitle || draft != baseDraft || html() != baseBody
+        return metaDescription != baseMetaDescription || title != baseTitle || draft != baseDraft || html() != baseBody
     }
 
     func load(_ html: String) throws {
@@ -98,16 +100,19 @@ final class MacEditorSession {
         recoveryError = nil
         recovered = false
         title = post?.title ?? ""
+        metaDescription = post?.metaDescription ?? ""
         draft = post?.draft ?? true
         date = post?.date ?? ""
         try load(post?.body ?? "")
         baseTitle = title
+        baseMetaDescription = metaDescription
         baseDraft = draft
         baseDate = date
         baseBody = RichInk.note(RichInk.render(pendingNote)).html
         do {
             if let copy = try MacDrafts().read(recoveryLocation) {
                 title = copy.title
+                metaDescription = copy.metaDescription ?? metaDescription
                 draft = post?.draft ?? copy.draft
                 date = post?.date ?? copy.date
                 try load(copy.body)
@@ -125,7 +130,7 @@ final class MacEditorSession {
         guard !opening, !recoveryReadFailed, baselined, let recoveryLocation else { return }
         do {
             if isDirty {
-                try MacDrafts().write(MacDraft(title: title, date: date, body: html(), draft: draft), to: recoveryLocation)
+                try MacDrafts().write(MacDraft(title: title, date: date, body: html(), draft: draft, metaDescription: metaDescription), to: recoveryLocation)
             } else {
                 try MacDrafts().remove(recoveryLocation)
             }
@@ -144,7 +149,7 @@ final class MacEditorSession {
             recoveryError = "Save your current edits to the blog before retrying the unreadable recovery copy."
             return
         }
-        let post = Post(slug: "", title: baseTitle, date: baseDate, draft: baseDraft, url: "", body: baseBody)
+        let post = Post(slug: "", title: baseTitle, date: baseDate, draft: baseDraft, url: "", metaDescription: baseMetaDescription, body: baseBody)
         do { try open(post: post, recoveryLocation: recoveryLocation) }
         catch { recoveryError = error.localizedDescription }
     }
@@ -155,6 +160,7 @@ final class MacEditorSession {
             try MacDrafts().remove(recoveryLocation)
             opening = true
             title = baseTitle
+            metaDescription = baseMetaDescription
             draft = baseDraft
             date = baseDate
             try load(baseBody)
@@ -170,6 +176,7 @@ final class MacEditorSession {
 
     func markClean() {
         baseTitle = title
+        baseMetaDescription = metaDescription
         baseDraft = draft
         baseDate = date
         baseBody = html()

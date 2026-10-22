@@ -76,6 +76,15 @@ struct MacUXChecks {
         assert(session.title == published.title && session.html() == published.body)
         assert(try! drafts.read(location) == nil)
 
+        session.metaDescription = "A description saved locally."
+        assert(session.isDirty)
+        assert(try! drafts.read(location)?.metaDescription == session.metaDescription)
+        let descriptionRecovery = MacEditorSession()
+        try descriptionRecovery.open(post: published, recoveryLocation: location)
+        assert(descriptionRecovery.metaDescription == session.metaDescription && descriptionRecovery.isDirty)
+        session.discardRecovery()
+        _ = mount(session, text: text)
+        assert(session.metaDescription.isEmpty && !session.isDirty)
         session.title = "A changed title"
         assert(session.isDirty)
         assert(try! drafts.read(location)?.title == "A changed title")
@@ -246,6 +255,23 @@ struct MacUXChecks {
         HTMLAPIProtocol.payload = #"{"slug":"new","title":"HTML","date":"2026-10-18T14:00:00Z","draft":true,"url":"/posts/new","body":"<p>Body</p>","format":"html"}"#
         _ = try await api.create(title: "HTML", body: "<p>Body</p>", draft: true)
         assert(HTMLAPIProtocol.contentType == "application/vnd.campfire.html+json")
+        HTMLAPIProtocol.payload = HTMLAPIProtocol.payload.replacingOccurrences(of: #""format":"html""#, with: #""format":"html","metaDescription":"A short description.""#)
+        let described = try await api.create(title: "HTML", body: "<p>Body</p>", draft: true, metaDescription: "A short description.")
+        assert(described.metaDescription == "A short description.")
+        assert(HTMLAPIProtocol.contentType == "application/vnd.campfire.description+json")
+        let sentPost = try JSONSerialization.jsonObject(with: HTMLAPIProtocol.body!) as! [String: Any]
+        assert(sentPost["metaDescription"] as? String == described.metaDescription)
+        _ = try await api.update(slug: "new", title: "HTML", date: described.date, body: "<p>Body</p>", draft: true, metaDescription: "")
+        let clearedPost = try JSONSerialization.jsonObject(with: HTMLAPIProtocol.body!) as! [String: Any]
+        assert(clearedPost["metaDescription"] as? String == "")
+        HTMLAPIProtocol.statusCode = 415
+        do {
+            _ = try await api.create(title: "HTML", body: "<p>Body</p>", draft: true, metaDescription: "Summary")
+            assertionFailure("An old server must reject description writes")
+        } catch {
+            assert(error.localizedDescription.contains("Update the Campfire server"))
+        }
+        HTMLAPIProtocol.statusCode = 200
         let legacyResponse = HTMLAPIProtocol.payload.replacingOccurrences(of: #","format":"html""#, with: "")
         do {
             _ = try JSONDecoder().decode(Post.self, from: Data(legacyResponse.utf8))

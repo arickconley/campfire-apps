@@ -6,6 +6,7 @@ struct MacDraft: Codable, Equatable {
     var body: String
     var draft: Bool
     var format: String? = "html"
+    var metaDescription: String? = nil
 }
 
 // Recovery copies never contain credentials and never publish to the server.

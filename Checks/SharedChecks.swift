@@ -16,6 +16,17 @@ enum SharedChecks {
     ]
 
     static func run() async throws {
+        let source = try MetaDescriptionAI.source(title: "A title", html: "<p>A &amp; <strong>B</strong>.</p>")
+        assert(source == "Title: A title\nPost:\nA & B.")
+        assert(try! MetaDescriptionAI.validated(" Short\n description. ") == "Short description.")
+        for raw in ["", String(repeating: "a", count: 161)] {
+            do { _ = try MetaDescriptionAI.validated(raw); assertionFailure("Invalid suggestion accepted") } catch {}
+        }
+        for html in ["<p></p>", "<p>" + String(repeating: "a", count: 8_001) + "</p>"] {
+            do { _ = try MetaDescriptionAI.source(title: "", html: html); assertionFailure("Invalid source accepted") } catch {}
+        }
+        let legacyPost = try JSONDecoder().decode(Post.self, from: Data(#"{"slug":"a","title":"A","date":"","draft":true,"url":"/posts/a","format":"html"}"#.utf8))
+        assert(legacyPost.metaDescription == nil)
         assert(RichInk.normalizedURL(" example.test ") == "https://example.test")
         assert(RichInk.normalizedURL(" /image.png ") == "/image.png")
         assert(RichInk.normalizedURL("https://example.test") == "https://example.test")

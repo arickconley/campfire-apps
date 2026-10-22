@@ -7,6 +7,7 @@ struct EditorView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var title = ""
+    @State private var metaDescription = ""
     @State private var session = RichTextSession()
     @State private var draft = false
     @State private var date = ""
@@ -37,6 +38,8 @@ struct EditorView: View {
                     .disabled(!loaded || saving)
                 Toggle("Draft", isOn: $draft)
                     .tint(Ink.ember)
+                    .disabled(!loaded || saving)
+                MetaDescriptionEditor(text: $metaDescription, title: title, html: { session.html() })
                     .disabled(!loaded || saving)
                 if loading { ProgressView("Loading post…") }
                 RichTextView(session: session, revision: session.revision, appearanceRevision: AppAppearance.shared.revision)
@@ -83,6 +86,7 @@ struct EditorView: View {
         do {
             let post = try await store.read(slug: slug)
             title = post.title
+            metaDescription = post.metaDescription ?? ""
             try session.load(post.body ?? "")
             draft = post.draft
             date = post.date
@@ -103,7 +107,8 @@ struct EditorView: View {
                 title: title.trimmingCharacters(in: .whitespacesAndNewlines),
                 date: date,
                 body: session.html(),
-                draft: draft
+                draft: draft,
+                metaDescription: metaDescription
             )
             dismiss()
         } catch {
