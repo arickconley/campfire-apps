@@ -11,6 +11,8 @@ Native SwiftUI apps for a Campfire blog server. One Xcode project, two app targe
 
 Both apps use the same themes, System/Light/Dark selector, accent swatches, editor fonts and text sizes, custom blog names, and verified connection fields. Preferences and names stay on the device; they do not change the site's styling or sync between devices. Write tokens stay in Keychain.
 
+Open **Page Editor** from the blog toolbar to edit existing pages such as About and Index with rich text, or templates and CSS as source. Saves publish changes to the selected blog (unless the page is a draft). Source editing keeps quotes and punctuation literal. Closing a file with unsaved edits asks before discarding; failed saves keep the editor open. Templates are validated and applied by the server, and stale saves are rejected rather than overwriting another editor's work. CSS changes may require purging a CDN cache. Page Editor requires the matching server update; it does not create or delete site files.
+
 The server is maintained separately in the sibling `../server` directory. These apps require its HTML API.
 
 ## Build

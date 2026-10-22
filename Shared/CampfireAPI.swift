@@ -28,6 +28,17 @@ struct Post: Identifiable, Decodable, Hashable {
     }
 }
 
+struct SiteFile: Identifiable, Codable, Hashable {
+    var path: String
+    var kind: String
+    var title: String
+    var draft: Bool
+    var body: String
+    var revision: String
+    var id: String { path }
+    var isPage: Bool { kind == "page" }
+}
+
 struct CampfireError: LocalizedError {
     var message: String
     var errorDescription: String? { message }
@@ -68,6 +79,25 @@ struct CampfireAPI {
         try throwAPI(response, data)
     }
 
+    func siteFiles() async throws -> [SiteFile] {
+        try await send(path: "/api/site/files", method: "GET", body: nil)
+    }
+
+    func siteFile(path: String) async throws -> SiteFile {
+        try await send(path: siteFilePath(path), method: "GET", body: nil)
+    }
+
+    func saveSiteFile(_ file: SiteFile) async throws -> SiteFile {
+        try await send(path: siteFilePath(file.path), method: "PUT", body: file)
+    }
+
+    private func siteFilePath(_ path: String) -> String {
+        var parts = URLComponents()
+        parts.path = "/api/site/file"
+        parts.queryItems = [URLQueryItem(name: "path", value: path)]
+        return parts.string!
+    }
+
     private struct WritePayload: Encodable {
         var title: String
         var date: String?
@@ -88,7 +118,7 @@ struct CampfireAPI {
         }
     }
 
-    private func send<T: Decodable>(path: String, method: String, body: WritePayload?, accept: Set<Int> = [200]) async throws -> T {
+    private func send<T: Decodable>(path: String, method: String, body: (any Encodable)?, accept: Set<Int> = [200]) async throws -> T {
         let (data, response) = try await request(path: path, method: method, body: body)
         guard accept.contains(response.statusCode) else {
             try throwAPI(response, data)
@@ -96,11 +126,14 @@ struct CampfireAPI {
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
+            if path.hasPrefix("/api/site/") {
+                throw CampfireError(message: "The server sent an incompatible Page Editor response. Update your server and app together.")
+            }
             throw CampfireError(message: "The server sent an incompatible post response. Update the server and Campfire apps together to use HTML posts.")
         }
     }
 
-    private func request(path: String, method: String, body: WritePayload?) async throws -> (Data, HTTPURLResponse) {
+    private func request(path: String, method: String, body: (any Encodable)?) async throws -> (Data, HTTPURLResponse) {
         guard let url = endpoint(path) else {
             throw CampfireError(message: "The server address is not a URL.")
         }
@@ -121,6 +154,9 @@ struct CampfireAPI {
         }
         guard let http = response as? HTTPURLResponse else {
             throw CampfireError(message: "The server sent an unexpected response.")
+        }
+        if path.hasPrefix("/api/site/"), http.value(forHTTPHeaderField: "X-Campfire-Content-Format") != "html", http.statusCode == 404 || http.statusCode == 405 {
+            throw CampfireError(message: "Page Editor requires a newer Campfire server. Update your server, then try again.")
         }
         guard http.value(forHTTPHeaderField: "X-Campfire-Content-Format") == "html" else {
             throw CampfireError(message: "This server needs the HTML update. Update the server and both Campfire apps together.")

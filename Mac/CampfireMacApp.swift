@@ -33,7 +33,7 @@ private struct FormatCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button("New Post") { bridge.requestNew += 1 }
                 .keyboardShortcut("n", modifiers: .command)
-                .disabled(bridge.busy)
+                .disabled(bridge.busy || bridge.siteEditing)
         }
         CommandMenu("Format") {
             Group {
@@ -65,7 +65,7 @@ private struct FormatCommands: Commands {
                 Button("Image…") { bridge.session?.beginImage() }
                 Button("Divider") { bridge.session?.applyBlock("hr") }
             }
-            .disabled(bridge.busy || !bridge.canSave)
+            .disabled(bridge.busy || bridge.siteEditing || !bridge.canSave)
         }
     }
 }

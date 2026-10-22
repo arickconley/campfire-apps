@@ -7,6 +7,7 @@ final class EditorBridge {
     var session: MacEditorSession?
     var requestNew = 0
     var busy = false
+    var siteEditing = false
     var canSave = false
     var save: (() async -> Bool)?
 
@@ -63,6 +64,7 @@ struct MacRootView: View {
 
     @State private var pane: Pane?
     @State private var adding = false
+    @State private var showSiteEditor = false
     @State private var editing = false
     @State private var search = ""
     @State private var filter = MacPostFilter.all
@@ -81,6 +83,11 @@ struct MacRootView: View {
         .containerBackground(Ink.paper, for: .window)
         .toolbarBackground(Ink.paper, for: .windowToolbar)
         .toolbarBackground(.visible, for: .windowToolbar)
+        .onChange(of: showSiteEditor) { _, shown in bridge.siteEditing = shown }
+        .sheet(isPresented: $showSiteEditor) {
+            SiteEditor(api: CampfireAPI(baseURL: store.current?.baseURL ?? "", token: store.token),
+                       blogName: store.current?.label ?? "Campfire")
+        }
         .sheet(isPresented: $adding) {
             MacBlogForm()
         }
@@ -190,6 +197,11 @@ struct MacRootView: View {
         .navigationTitle("Campfire")
         .navigationSplitViewColumnWidth(min: 220, ideal: 280, max: 380)
         .toolbar {
+            ToolbarItem {
+                Button("Page Editor", systemImage: "doc.text") { showSiteEditor = true }
+                    .disabled(!store.configured || bridge.busy)
+                    .help("Edit pages, templates, and stylesheets")
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button("New Post", systemImage: "square.and.pencil") {
                     go(.editor(.compose))
@@ -710,7 +722,7 @@ private struct MacEditorScreen: View {
 
 }
 
-private struct MacInsertSheet: View {
+struct MacInsertSheet: View {
     var insert: MacInsert
     var onCommit: (String, String) -> Void
 

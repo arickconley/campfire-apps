@@ -82,6 +82,36 @@ enum SharedChecks {
             assertionFailure("An incompatible server was accepted")
         } catch {}
         HTMLAPIProtocol.format = "html"
+        let api = CampfireAPI(baseURL: "http://format-check.invalid", token: "fixture-token")
+        let page = SiteFile(path: "notes/a & b.html", kind: "page", title: "About", draft: false,
+                            body: "<p>Keep <strong>formatting</strong>.</p>", revision: "revision-1")
+        HTMLAPIProtocol.payload = String(decoding: try JSONEncoder().encode([page]), as: UTF8.self)
+        let files = try await api.siteFiles()
+        assert(files == [page])
+        HTMLAPIProtocol.payload = String(decoding: try JSONEncoder().encode(page), as: UTF8.self)
+        let loadedPage = try await api.siteFile(path: page.path)
+        assert(loadedPage == page)
+        let query = URLComponents(url: HTMLAPIProtocol.lastURL!, resolvingAgainstBaseURL: false)!.queryItems!
+        assert(query == [URLQueryItem(name: "path", value: page.path)])
+        _ = try await api.saveSiteFile(page)
+        assert(HTMLAPIProtocol.method == "PUT")
+        let sent = try JSONDecoder().decode(SiteFile.self, from: HTMLAPIProtocol.body!)
+        assert(sent == page)
+        HTMLAPIProtocol.statusCode = 409
+        HTMLAPIProtocol.payload = #"{"error":"File changed; reopen it."}"#
+        do {
+            _ = try await api.saveSiteFile(page)
+            assertionFailure("Stale save accepted")
+        } catch { assert(error.localizedDescription == "File changed; reopen it.") }
+        HTMLAPIProtocol.statusCode = 404
+        HTMLAPIProtocol.format = nil
+        do {
+            _ = try await api.siteFiles()
+            assertionFailure("Old server accepted")
+        } catch { assert(error.localizedDescription.contains("newer Campfire server")) }
+        HTMLAPIProtocol.statusCode = 200
+        HTMLAPIProtocol.format = "html"
+        HTMLAPIProtocol.payload = "[]"
         print("Shared checks passed: font round trips, lossless restyling, URL handling, and blog connection validation.")
     }
 }

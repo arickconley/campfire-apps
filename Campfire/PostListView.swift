@@ -3,6 +3,7 @@ import SwiftUI
 struct PostListView: View {
     @Environment(PostsStore.self) private var store
     @State private var showSettings = false
+    @State private var showSiteEditor = false
     @State private var scanning = false
     @State private var scanError: String?
     @State private var editor: EditorRoute?
@@ -29,6 +30,10 @@ struct PostListView: View {
                     .accessibilityLabel("Settings")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    Button("Page Editor", systemImage: "doc.text") { showSiteEditor = true }
+                        .disabled(!store.configured)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         editor = EditorRoute(slug: nil)
                     } label: {
@@ -39,6 +44,10 @@ struct PostListView: View {
                 }
             }
             .refreshable { await store.reload() }
+            .sheet(isPresented: $showSiteEditor) {
+                SiteEditor(api: CampfireAPI(baseURL: store.current?.baseURL ?? "", token: store.token),
+                           blogName: store.current?.label ?? "Campfire")
+            }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
