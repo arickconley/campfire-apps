@@ -1,0 +1,18 @@
+Use case: productivity-visual.
+Create the final raster BACKGROUND ARTWORK for a polished macOS Campfire DMG installer. It is artwork only, not a screenshot or a mockup. Landscape canvas 1536 x 1024 pixels, corresponding to a 768 x 512 point Finder window.
+
+Supporting brand assets:
+Image 1 is the supplied Campfire flame-and-logs logo. Reuse its distinctive silhouette, orange/gold flame, and brown logs faithfully in a small header emblem.
+Image 2 is the supplied Mtnwurx wordmark. Preserve this exact spelling and geometric navy logo silhouette with its small cyan mountain accent. Reproduce it faithfully as a subtle maker credit, never invent a replacement mark.
+
+Art direction: refined warm parchment (#F4EFE6), very subtle paper grain, soft cream light, brown-black editorial serif typography, restrained forest/moss green installation arrow. Quiet, native-feeling, crafted and polished. No harsh gradients, cards, decorative frames, or busy scenery.
+
+Precise layout:
+- At the top left, place the Campfire logo within approximately x=110..230, y=74..232 pixels, then a handsome serif wordmark reading exactly "Campfire" around x=280, y=125. Under that title a small understated line reading exactly "A little space to think.".
+- Reserve TWO COMPLETELY EMPTY areas for the REAL native Finder icons that will be placed on top later. Their centers are (400, 560) and (1136, 560) pixels. Each empty region must be at least 260 x 260 pixels. Do NOT draw an app icon, folder icon, dashed placeholders, circles, labels, or any other objects inside these regions. The real icons and their own file labels are NOT part of this artwork.
+- Between those empty regions, draw a single elegant gently curved moss-green arrow pointing LEFT TO RIGHT. Its tail should start around (620,560) and arrowhead finish around (915,560). Use a confident thin hand-drawn stroke with tasteful slight organic curvature. Above the arrow put the exact legible text "Drag me here". No other installation text.
+- In the bottom footer below y=870 pixels, add a delicate low-contrast horizontal rule with generous spacing. Center a subtle small "made by" followed by the supplied Mtnwurx logo wordmark, approximately 245 pixels wide and 50 pixels tall. Keep this credit quiet and clearly secondary to Campfire. Ensure the Mtnwurx wordmark is authentic and readable on the warm cream background.
+- Generous breathing room; artwork extends to all canvas edges.
+
+Exact text only: "Campfire", "A little space to think.", "Drag me here", "made by". The Mtnwurx lettering is in the supplied logo, do not add a second typed brand name.
+Do not render Finder chrome, a window border, toolbar, buttons, app icons or folder icons. No additional text or watermark.

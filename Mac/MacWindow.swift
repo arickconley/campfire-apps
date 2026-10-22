@@ -473,7 +473,7 @@ private struct MacEditorScreen: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(maxWidth: 680, maxHeight: .infinity, alignment: .top)
+                .frame(minWidth: 320, maxWidth: 680, maxHeight: .infinity, alignment: .top)
                 .padding(.horizontal, 8)
                 .padding(.top, 24)
                 .padding(.bottom, 16)
