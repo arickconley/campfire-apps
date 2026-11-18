@@ -40,8 +40,76 @@ struct SiteFile: Identifiable, Codable, Hashable {
     var isPage: Bool { kind == "page" }
 }
 
+struct SiteSettings: Codable, Equatable, Hashable {
+    var title: String
+    var description: String
+    var url: String
+    var style: String
+    var styles: [String]
+    var usesStyle: Bool
+    var revision: String
+
+    init(title: String, description: String = "", url: String = "", style: String = "paper",
+         styles: [String] = [], usesStyle: Bool = true, revision: String = "") {
+        self.title = title
+        self.description = description
+        self.url = url
+        self.style = style
+        self.styles = styles
+        self.usesStyle = usesStyle
+        self.revision = revision
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        title = try c.decode(String.self, forKey: .title)
+        description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
+        url = try c.decodeIfPresent(String.self, forKey: .url) ?? ""
+        style = try c.decodeIfPresent(String.self, forKey: .style) ?? ""
+        styles = try c.decodeIfPresent([String].self, forKey: .styles) ?? []
+        usesStyle = try c.decodeIfPresent(Bool.self, forKey: .usesStyle) ?? true
+        revision = try c.decode(String.self, forKey: .revision)
+    }
+
+    func validated() throws -> SiteSettings {
+        var copy = self
+        copy.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        copy.description = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        var rawURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        while rawURL.hasSuffix("/") { rawURL.removeLast() }
+        copy.url = rawURL
+        copy.style = style.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !copy.title.isEmpty else {
+            throw CampfireError(message: "Enter a site title.")
+        }
+        if !copy.url.isEmpty {
+            guard let parsed = URL(string: copy.url),
+                  let scheme = parsed.scheme?.lowercased(),
+                  scheme == "http" || scheme == "https",
+                  let host = parsed.host, !host.isEmpty,
+                  parsed.user == nil, parsed.password == nil,
+                  parsed.query == nil, parsed.fragment == nil else {
+                throw CampfireError(message: "Enter an HTTP or HTTPS URL without a query or fragment, or leave it blank.")
+            }
+        }
+        return copy
+    }
+
+    static func styleLabel(_ name: String) -> String {
+        switch name {
+        case "": return "None"
+        case "paper": return "Paper"
+        case "ink": return "Ink"
+        case "plain": return "Plain"
+        case "nerd": return "Nerd"
+        default: return name
+        }
+    }
+}
+
 struct CampfireError: LocalizedError {
     var message: String
+    var unsupportedEndpoint: Bool = false
     var errorDescription: String? { message }
 }
 
@@ -84,6 +152,14 @@ struct CampfireAPI {
         try await send(path: "/api/site/files", method: "GET", body: nil)
     }
 
+    func siteSettings() async throws -> SiteSettings {
+        try await send(path: "/api/site/settings", method: "GET", body: nil)
+    }
+
+    func saveSiteSettings(_ settings: SiteSettings) async throws -> SiteSettings {
+        try await send(path: "/api/site/settings", method: "PUT", body: settings)
+    }
+
     func siteFile(path: String) async throws -> SiteFile {
         try await send(path: siteFilePath(path), method: "GET", body: nil)
     }
@@ -123,6 +199,12 @@ struct CampfireAPI {
 
     private func send<T: Decodable>(path: String, method: String, body: (any Encodable)?, accept: Set<Int> = [200]) async throws -> T {
         let (data, response) = try await request(path: path, method: method, body: body)
+        if path == "/api/site/settings", response.statusCode == 404 || response.statusCode == 405 {
+            throw CampfireError(
+                message: "Site settings require a newer Campfire server. Update your server, then try again.",
+                unsupportedEndpoint: true
+            )
+        }
         guard accept.contains(response.statusCode) else {
             try throwAPI(response, data)
         }

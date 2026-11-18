@@ -120,6 +120,45 @@ enum SharedChecks {
             _ = try await api.siteFiles()
             assertionFailure("Old server accepted")
         } catch { assert(error.localizedDescription.contains("newer Campfire server")) }
+        HTMLAPIProtocol.statusCode = 404
+        HTMLAPIProtocol.format = "html"
+        do {
+            _ = try await api.siteSettings()
+            assertionFailure("Missing site settings endpoint accepted")
+        } catch let error as CampfireError {
+            assert(error.unsupportedEndpoint && error.localizedDescription.contains("newer Campfire server"))
+        }
+        HTMLAPIProtocol.statusCode = 200
+        let rawSettings = SiteSettings(title: "  Thoughts ", description: " Notes ", url: "https://thoughts.arick.io///",
+                                       style: " ink ", styles: ["ink", "nerd", "paper", "plain"], usesStyle: true, revision: "rev-1")
+        let checkedSettings = try rawSettings.validated()
+        assert(checkedSettings.title == "Thoughts" && checkedSettings.description == "Notes")
+        assert(checkedSettings.url == "https://thoughts.arick.io" && checkedSettings.style == "ink")
+        assert(SiteSettings.styleLabel("paper") == "Paper" && SiteSettings.styleLabel("arick") == "arick")
+        for badURL in ["thoughts.arick.io", "javascript:alert(1)", "https://user:pass@thoughts.arick.io", "https://thoughts.arick.io?x=1", "https://thoughts.arick.io#top"] {
+            var bad = checkedSettings
+            bad.url = badURL
+            do { _ = try bad.validated(); assertionFailure("Invalid site URL accepted: \(badURL)") } catch {}
+        }
+        do {
+            var emptyTitle = checkedSettings
+            emptyTitle.title = "   "
+            _ = try emptyTitle.validated()
+            assertionFailure("Empty site title accepted")
+        } catch {}
+        HTMLAPIProtocol.payload = String(decoding: try JSONEncoder().encode(checkedSettings), as: UTF8.self)
+        let loadedSettings = try await api.siteSettings()
+        assert(loadedSettings == checkedSettings)
+        _ = try await api.saveSiteSettings(checkedSettings)
+        assert(HTMLAPIProtocol.method == "PUT" && HTMLAPIProtocol.lastURL?.path == "/api/site/settings")
+        let sentSettings = try JSONDecoder().decode(SiteSettings.self, from: HTMLAPIProtocol.body!)
+        assert(sentSettings == checkedSettings)
+        HTMLAPIProtocol.statusCode = 409
+        HTMLAPIProtocol.payload = #"{"error":"this file changed on the server; reopen it before saving"}"#
+        do {
+            _ = try await api.saveSiteSettings(checkedSettings)
+            assertionFailure("Stale settings save accepted")
+        } catch { assert(error.localizedDescription.contains("reopen")) }
         HTMLAPIProtocol.statusCode = 200
         HTMLAPIProtocol.format = "html"
         HTMLAPIProtocol.payload = "[]"
